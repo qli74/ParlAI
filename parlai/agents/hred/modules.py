@@ -131,6 +131,7 @@ class Seq2Seq(nn.Module):
             u1 = u1.cuda()
             u2 = u2.cuda()
             u3 = u3.cuda()
+        #print(u1,u2)
         o1, o2 = self.base_enc((u1, u1_lens)), self.base_enc((u2, u2_lens))
         qu_seq = torch.cat((o1, o2), 1)
         final_session_o = self.ses_enc(qu_seq)

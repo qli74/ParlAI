@@ -54,6 +54,7 @@ class HredAgent(TorchGeneratorAgent):
     def train_step(self,batch):
         self.is_training=True
         if len(self.history.history_vecs)<2:
+            #print('no history, skip this batch')
             return
         #print('training')
         #print(batch)
@@ -69,7 +70,7 @@ class HredAgent(TorchGeneratorAgent):
         #else:
         #    self.init_param()
 
-        criteria = nn.CrossEntropyLoss(ignore_index=10003,  reduction='sum' )
+        criteria = nn.CrossEntropyLoss(ignore_index=10003, reduction='sum' )
         if use_cuda:
             criteria.cuda()
 
@@ -81,8 +82,11 @@ class HredAgent(TorchGeneratorAgent):
         u1=torch.LongTensor(self.history.history_vecs[-2])
         u2=batch['text_vec']
         u3=batch['label_vec']
+        u1[u1>10003]=0
+        u2[u2 > 10003] = 0
+        u3[u3 > 10003] = 0
         #sample_batch=custom_collate_fn(u1,u2,u3,options.batchsize)
-        sample_batch=(u1.unsqueeze(0),[len(u1)],u2,[len(u2)],u3,[len(u3)])
+        sample_batch=(u1.unsqueeze(0),[min(len(u1),10003)],u2,[min(len(u2),10003)],u3,[min(len(u3),10003)])
         #print(sample_batch)
         new_tc_ratio = 2100.0 / (2100.0 + math.exp(batch_id / 2100.0))
         model.dec.set_tc_ratio(new_tc_ratio)
@@ -127,9 +131,10 @@ class HredAgent(TorchGeneratorAgent):
         self.inference_beam(batch)
         answer = self.uniq_answer()
         reply['text'] = answer
-        if batch['label_vec'] is None:
-            print(answer)
-        return Output(answer)
+        #if batch['label_vec'] is None:
+        #    print(answer)
+
+        return Output(answer[3:])
 
     def build_model(self):
         """
@@ -219,9 +224,11 @@ class HredAgent(TorchGeneratorAgent):
             u3 = torch.LongTensor([[0]])
         else:
             u3 = batch['label_vec']
-
+        u1[u1>10003]=0
+        u2[u2 > 10003] = 0
+        u3[u3 > 10003] = 0
         # sample_batch=custom_collate_fn(u1,u2,u3,options.batchsize)
-        sample_batch = (u1.unsqueeze(0), [len(u1)], u2, [len(u2)], u3, [len(u3)])
+        sample_batch = (u1.unsqueeze(0), [min(len(u1),10003)], u2, [min(len(u2),10003)], u3, [min(len(u3),10003)])
 
         u1, u1_lens, u2, u2_lens, u3, u3_lens = sample_batch[0], sample_batch[1], sample_batch[2], sample_batch[3], \
                                                 sample_batch[4], sample_batch[5]
