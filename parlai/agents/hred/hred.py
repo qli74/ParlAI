@@ -127,14 +127,10 @@ class HredAgent(TorchGeneratorAgent):
 
     def eval_step(self,batch):
         # for each row in batch, convert tensor to back to text strings
-        reply = {}
         self.inference_beam(batch)
         answer = self.uniq_answer()
-        reply['text'] = answer
-        #if batch['label_vec'] is None:
-        #    print(answer)
-
-        return Output(answer[3:])
+        answer = answer.replace('<s> ', '').replace(' </s>', '')
+        return Output(text=[answer])
 
     def build_model(self):
         """
