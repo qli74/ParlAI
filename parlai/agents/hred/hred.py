@@ -54,7 +54,7 @@ class HredAgent(TorchGeneratorAgent):
     def train_step(self,batch):
         self.is_training=True
         if len(self.history.history_vecs)<2:
-            print('no history, skip this batch')
+            self.metrics['total_skipped_batches']+=1
             return
         #print('training')
         #print(batch)
