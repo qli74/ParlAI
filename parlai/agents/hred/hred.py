@@ -99,7 +99,7 @@ class HredAgent(TorchGeneratorAgent):
 
         preds = preds[:, :-1, :].contiguous().view(-1, preds.size(2))
         u3 = u3[:, 1:].contiguous().view(-1)
-
+        print(preds,u3)
         loss = criteria(preds, u3)
         #print(u3.ne(10003).long().sum().data)
         target_toks = u3.ne(10003).long().sum().item()
