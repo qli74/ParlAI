@@ -12,6 +12,18 @@ class Option_object:
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
+def sent_to_tensor(dict,sent):
+    vec=[]
+    #print(sent)
+    words=sent.split(' ')
+    for tok in words:
+        tok=tok.lower()
+        try:
+            vec.append(dict[tok])
+        except:
+            vec.append(1)
+    return torch.LongTensor(vec)
+
 def sort_key(temp, mmi):
     if mmi:
         lambda_param = 0.25
@@ -32,7 +44,7 @@ def tensor_to_sent(x, inv_dict, greedy=False):
         sent = []
         #print(seq)
         for i in seq:
-            sent.append(inv_dict[int(i)])
+            sent.append(inv_dict[str(int(i))])
             if i == 2:
                 break
         sents.append((" ".join(sent), scr))

@@ -56,9 +56,12 @@ class HredAgent(TorchGeneratorAgent):
         if len(self.history.history_vecs)<2:
             #print('no history, skip this batch')
             return
-        #print('training')
         #print(batch)
+        options=self.opt_obj
+
         #print(self.history.history_vecs,self.history.history_strings )
+        with open(options.override['dict_file']+'.pkl', 'rb') as fp2:
+            dict_data = pickle.load(fp2)
 
         options=self.opt_obj
         model=self.model
@@ -79,14 +82,11 @@ class HredAgent(TorchGeneratorAgent):
         tr_loss, tlm_loss, num_words = 0, 0, 0
         strt = time.time()
         #train batch
-        u1=torch.LongTensor(self.history.history_vecs[-2])
-        u2=batch['text_vec']
-        u3=batch['label_vec']
-        u1[u1>10003]=0
-        u2[u2 > 10003] = 0
-        u3[u3 > 10003] = 0
+        u1=sent_to_tensor(dict_data,self.history.history_strings[-2]).unsqueeze(0)
+        u2=sent_to_tensor(dict_data,batch['observations'][0]['text']).unsqueeze(0)
+        u3=sent_to_tensor(dict_data,batch['labels'][0]).unsqueeze(0)
         #sample_batch=custom_collate_fn(u1,u2,u3,options.batchsize)
-        sample_batch=(u1.unsqueeze(0),[min(len(u1),10003)],u2,[min(len(u2),10003)],u3,[min(len(u3),10003)])
+        sample_batch=(u1,[min(len(u1),10003)],u2,[min(len(u2),10003)],u3,[min(len(u3),10003)])
         #print(sample_batch)
         new_tc_ratio = 2100.0 / (2100.0 + math.exp(batch_id / 2100.0))
         model.dec.set_tc_ratio(new_tc_ratio)
@@ -194,10 +194,9 @@ class HredAgent(TorchGeneratorAgent):
         #print(options.override['dict_file'])
         with open(options.override['dict_file']+'.pkl', 'rb') as fp2:
             dict_data = pickle.load(fp2)
-        inv_dict = {}
-        for x in dict_data:
-            tok, f, _, _ = x
-            inv_dict[f] = tok
+        with open(options.override['dict_file']+'_inv.pkl', 'rb') as fp2:
+            inv_dict = pickle.load(fp2)
+
         criteria = nn.CrossEntropyLoss(ignore_index=10003, reduction='sum')
         if use_cuda:
             criteria.cuda()
@@ -210,21 +209,19 @@ class HredAgent(TorchGeneratorAgent):
         #test_ppl = self.calc_valid_loss(dataloader, criteria)
         #print("test preplexity is:{}".format(test_ppl))
         #print(self.history.history_strings)
-        u2 = batch['text_vec']
+        u2 = sent_to_tensor(dict_data, batch['observations'][0]['text']).unsqueeze(0)
 
         try:
-            u1 = torch.LongTensor(self.history.history_vecs[-2])
+            u1=sent_to_tensor(dict_data, self.history.history_strings[-2]).unsqueeze(0)
         except:
-            u1 = torch.LongTensor([0])
+            u1 = torch.LongTensor([[1,2]])
         if batch['label_vec'] is None:
-            u3 = torch.LongTensor([[0]])
+            u3 = torch.LongTensor([[1,2]])
         else:
-            u3 = batch['label_vec']
-        u1[u1>10003]=0
-        u2[u2 > 10003] = 0
-        u3[u3 > 10003] = 0
+            u3 = sent_to_tensor(dict_data, batch['labels'][0]).unsqueeze(0)
+
         # sample_batch=custom_collate_fn(u1,u2,u3,options.batchsize)
-        sample_batch = (u1.unsqueeze(0), [min(len(u1),10003)], u2, [min(len(u2),10003)], u3, [min(len(u3),10003)])
+        sample_batch = (u1, [min(len(u1),10003)], u2, [min(len(u2),10003)], u3, [min(len(u3),10003)])
 
         u1, u1_lens, u2, u2_lens, u3, u3_lens = sample_batch[0], sample_batch[1], sample_batch[2], sample_batch[3], \
                                                 sample_batch[4], sample_batch[5]
@@ -233,7 +230,7 @@ class HredAgent(TorchGeneratorAgent):
             u1 = u1.cuda()
             u2 = u2.cuda()
             u3 = u3.cuda()
-
+        #(u1,u2,u3)
         o1, o2 = self.model.base_enc((u1, u1_lens)), self.model.base_enc((u2, u2_lens))
         qu_seq = torch.cat((o1, o2), 1)
         # if we need to decode the intermediate queries we may need the hidden states
@@ -242,6 +239,7 @@ class HredAgent(TorchGeneratorAgent):
         for k in range(options.batchsize):
             sent = self.generate(final_session_o[k, :, :].unsqueeze(0), options)
             pt = tensor_to_sent(sent, inv_dict)
+            #print(pt)
             # greedy true for below because only beam generates a tuple of sequence and probability
             gt = tensor_to_sent(u3[k, :].unsqueeze(0).data.cpu().numpy(), inv_dict, True)
             fout.write(str(gt[0]) + "    |    " + str(pt[0][0]) + "\n")
@@ -330,4 +328,5 @@ class HredAgent(TorchGeneratorAgent):
         #print('---all---')
         answers=uniq.most_common()
         #print('num of answer:',len(answers))
+        #print(answers)
         return answers[0][0]
