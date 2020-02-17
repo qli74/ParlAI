@@ -96,7 +96,7 @@ class HredAgent(TorchGeneratorAgent):
         u3 = sample_batch[4]
         if use_cuda:
             u3 = u3.cuda()
-
+        print(batch['labels'],u3)
         preds = preds[:, :-1, :].contiguous().view(-1, preds.size(2))
         u3 = u3[:, 1:].contiguous().view(-1)
         print(preds,u3)
