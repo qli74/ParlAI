@@ -13,7 +13,7 @@ class Option_object:
         self.__dict__.update(entries)
 
 def sent_to_tensor(dict,sent):
-    vec=[]
+    vec=[1]
     #print(sent)
     words=sent.split(' ')
     for tok in words:
