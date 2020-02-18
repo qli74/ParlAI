@@ -286,21 +286,23 @@ class HredAgent(TorchGeneratorAgent):
                     lm_op = lm_op[:, -1, :]
 
                 for i in range(beam):
+                    ctok, cval = topind.data[0, i], topval.data[0, i]
                     try:
-                        ctok, cval = topind.data[0, i], topval.data[0, i]
-                        if options.lm:
-                            uval = lm_op.data[0, ctok]
-                            if dec_lm.size(1) > antilm_param:
-                                uval = 0.0
-                        else:
-                            uval = 0.0
-
-                        if ctok == 2:
-                            list_to_append = final_candids
-                        else:
-                            list_to_append = n_candidates
+                        ctok[ctok>10003]=2
                     except:
+                        ctok=2
+
+                    if options.lm:
+                        uval = lm_op.data[0, ctok]
+                        if dec_lm.size(1) > antilm_param:
+                            uval = 0.0
+                    else:
+                        uval = 0.0
+
+                    if ctok == 2:
                         list_to_append = final_candids
+                    else:
+                        list_to_append = n_candidates
 
                     list_to_append.append((seq + [ctok], pts_score + cval - diversity_rate * (i + 1), pt_score + uval))
 
