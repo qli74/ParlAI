@@ -284,7 +284,7 @@ class HredAgent(TorchGeneratorAgent):
                     dec_lm = dec_lm[:, :, :-1]
                     lm_op = F.log_softmax(dec_lm, 2, 5)
                     lm_op = lm_op[:, -1, :]
-                print(topind.data)
+
                 for i in range(beam):
                     ctok, cval = topind.data[0, i], topval.data[0, i]
                     if options.lm:
