@@ -288,9 +288,10 @@ class HredAgent(TorchGeneratorAgent):
                 for i in range(beam):
                     ctok, cval = topind.data[0, i], topval.data[0, i]
                     try:
-                        ctok[ctok>10003]=2
+                        ctok[ctok>10003]=0
+                        ctok[ctok < 0] = 0
                     except:
-                        ctok=2
+                        ctok=0
 
                     if options.lm:
                         uval = lm_op.data[0, ctok]
