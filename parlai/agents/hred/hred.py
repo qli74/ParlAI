@@ -304,8 +304,8 @@ class HredAgent(TorchGeneratorAgent):
                         list_to_append = final_candids
                     else:
                         list_to_append = n_candidates
-                    print(seq,ctok,cval)
-                    print(seq + [ctok], pts_score + cval - diversity_rate * (i + 1), pt_score + uval)
+                    #print(seq,ctok,cval)
+                    #print(seq + [ctok], pts_score + cval - diversity_rate * (i + 1), pt_score + uval)
                     list_to_append.append((seq + [ctok], pts_score + cval - diversity_rate * (i + 1), pt_score + uval))
 
             n_candidates.sort(key=lambda temp: sort_key(temp, options.mmi), reverse=True)
