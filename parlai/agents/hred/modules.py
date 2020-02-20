@@ -29,7 +29,7 @@ def sent_to_tensor(dict,sent):
     for i in range(count,41):
         vec.append(0)
 
-    return vec
+    return vec,count
 
 def sort_key(temp, mmi):
     if mmi:

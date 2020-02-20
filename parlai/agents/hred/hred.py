@@ -103,12 +103,15 @@ class HredAgent(TorchGeneratorAgent):
                 try:
                     if len(text[i*3]+text[i*3+1]+text[i*3+2])<30:
                         continue
-                    u1.append(sent_to_tensor(dict_data,text[i*3]))
-                    u2.append(sent_to_tensor(dict_data,text[i * 3+1]))
-                    u3.append(sent_to_tensor(dict_data,text[i * 3+2]))
-                    l_u1.append(len(u1[-1]))
-                    l_u2.append(len(u2[-1]))
-                    l_u3.append(len(u3[-1]))
+                    t,c=sent_to_tensor(dict_data,text[i*3])
+                    u1.append(t)
+                    l_u1.append(c)
+                    t,c=sent_to_tensor(dict_data,text[i * 3+1])
+                    u2.append(t)
+                    l_u2.append(c)
+                    sent_to_tensor(dict_data,text[i * 3+2])
+                    u3.append(t)
+                    l_u3.append(c)
                 except:
                     pass
 
@@ -243,19 +246,59 @@ class HredAgent(TorchGeneratorAgent):
         #test_ppl = self.calc_valid_loss(dataloader, criteria)
         #print("test preplexity is:{}".format(test_ppl))
         #print(self.history.history_strings)
-        u2 = sent_to_tensor(dict_data, batch['observations'][0]['text']).unsqueeze(0)
+        observations = batch['observations']
+        if len(observations)>1:
+            text_list = []
+            u1 = []
+            u2 = []
+            u3 = []
+            l_u1 = []
+            l_u2 = []
+            l_u3 = []
+            for sample in observations:
+                #print(sample)
+                text=sample['full_text']
+                text = re.split(' \. | \? |!', text)
+                # print(text)
+                try:
+                    t,c=sent_to_tensor(dict_data, text[-2])
+                    u1.append(t)
+                    l_u1.append(c)
+                except:
+                    u1.append(sent_to_tensor(dict_data, '<s> </s>'))
+                    l_u1.append(2)
+                t,c=sent_to_tensor(dict_data, text[-1])
+                u2.append(t)
+                l_u2.append(c)
+                t,c=sent_to_tensor(dict_data, sample['eval_labels'][0])
+                u3.append(t)
+                l_u3.append(c)
 
-        try:
-            u1=sent_to_tensor(dict_data, self.history.history_strings[-2]).unsqueeze(0)
-        except:
-            u1 = torch.LongTensor([[1,2]])
-        if batch['label_vec'] is None:
-            u3 = torch.LongTensor([[1,2]])
+
+            u1 = torch.LongTensor(u1)
+            u2 = torch.LongTensor(u2)
+            u3 = torch.LongTensor(u3)
+            # sample_batch=custom_collate_fn(u1,u2,u3,options.batchsize)
+            sample_batch = (u1, l_u1, u2, l_u2, u3, l_u3)
         else:
-            u3 = sent_to_tensor(dict_data, batch['labels'][0]).unsqueeze(0)
+            #print(observations)
+            u2,l_u2 = sent_to_tensor(dict_data, observations[0]['text'])
+            u2 = torch.LongTensor(u2).unsqueeze(0)
+            try:
+                u1,l_u1=sent_to_tensor(dict_data, self.history.history_strings[-2])
+                u1 = torch.LongTensor(u1).unsqueeze(0)
+            except:
+                u1= torch.LongTensor([[1,2]])
+                l_u1=2
+            if batch['label_vec'] is None:
+                u3 = torch.LongTensor([[1,2]])
+                l_u3=2
+            else:
+                u3,l_u3 = sent_to_tensor(dict_data, batch['labels'][0])
+                u3 = torch.LongTensor(u3).unsqueeze(0)
 
-        # sample_batch=custom_collate_fn(u1,u2,u3,options.batchsize)
-        sample_batch = (u1, [min(len(u1),10003)], u2, [min(len(u2),10003)], u3, [min(len(u3),10003)])
+            # sample_batch=custom_collate_fn(u1,u2,u3,options.batchsize)
+            sample_batch = (u1, [l_u1], u2, [l_u2], u3, [l_u3])
 
         u1, u1_lens, u2, u2_lens, u3, u3_lens = sample_batch[0], sample_batch[1], sample_batch[2], sample_batch[3], \
                                                 sample_batch[4], sample_batch[5]
@@ -270,7 +313,7 @@ class HredAgent(TorchGeneratorAgent):
         # if we need to decode the intermediate queries we may need the hidden states
         final_session_o = self.model.ses_enc(qu_seq)
         # forward(self, ses_encoding, x=None, x_lens=None, beam=5 ):
-        for k in range(options.batchsize):
+        for k in range(len(observations)):
             sent = self.generate(final_session_o[k, :, :].unsqueeze(0), options)
             pt = tensor_to_sent(sent, inv_dict)
             #print(pt)
