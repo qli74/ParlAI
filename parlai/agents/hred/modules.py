@@ -24,9 +24,9 @@ def sent_to_tensor(dict,sent):
         except:
             vec.append(0)
         count+=1
-        if count>40:
+        if count>15:
             break
-    for i in range(count,41):
+    for i in range(count,16):
         vec.append(0)
 
     return vec,count
