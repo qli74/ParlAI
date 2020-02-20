@@ -182,7 +182,7 @@ class BaseEncoder(nn.Module):
             h_0 = h_0.cuda()
         x_emb = self.embed(x)
         x_emb = self.drop(x_emb)
-        x_emb = torch.nn.utils.rnn.pack_padded_sequence(x_emb, x_lens, batch_first=True)
+        x_emb = torch.nn.utils.rnn.pack_padded_sequence(x_emb, x_lens, batch_first=True,enforce_sorted=False)
         x_o, x_hid = self.rnn(x_emb, h_0)
         # assuming dimension 0, 1 is for layer 1 and 2, 3 for layer 2
         if self.direction == 2:

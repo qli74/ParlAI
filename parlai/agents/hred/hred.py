@@ -259,14 +259,12 @@ class HredAgent(TorchGeneratorAgent):
                 #print(sample)
                 text=sample['full_text']
                 text = re.split(' \. | \? |!', text)
-                # print(text)
                 try:
                     t,c=sent_to_tensor(dict_data, text[-2])
-                    u1.append(t)
-                    l_u1.append(c)
                 except:
-                    u1.append(sent_to_tensor(dict_data, '<s> </s>'))
-                    l_u1.append(2)
+                    t,c=sent_to_tensor(dict_data, '<s> </s>')
+                u1.append(t)
+                l_u1.append(c)
                 t,c=sent_to_tensor(dict_data, text[-1])
                 u2.append(t)
                 l_u2.append(c)
