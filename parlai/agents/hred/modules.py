@@ -16,13 +16,20 @@ def sent_to_tensor(dict,sent):
     vec=[1]
     #print(sent)
     words=sent.split(' ')
+    count=0
     for tok in words:
         tok=tok.lower()
         try:
             vec.append(dict[tok])
         except:
-            vec.append(1)
-    return torch.LongTensor(vec)
+            vec.append(0)
+        count+=1
+        if count>40:
+            break
+    for i in range(count,41):
+        vec.append(0)
+
+    return vec
 
 def sort_key(temp, mmi):
     if mmi:

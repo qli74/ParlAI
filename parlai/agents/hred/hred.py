@@ -1,6 +1,6 @@
 from parlai.core.torch_generator_agent import TorchGeneratorAgent, Output
 from .modules import *
-import argparse,time
+import argparse,time,re
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import torch.nn.init as init
@@ -53,9 +53,9 @@ class HredAgent(TorchGeneratorAgent):
 
     def train_step(self,batch):
         self.is_training=True
-        if len(self.history.history_vecs)<2:
+        #if len(self.history.history_vecs)<2:
             #print('no history, skip this batch')
-            return
+        #    return
         #print(batch)
         options=self.opt_obj
 
@@ -82,11 +82,41 @@ class HredAgent(TorchGeneratorAgent):
         tr_loss, tlm_loss, num_words = 0, 0, 0
         strt = time.time()
         #train batch
-        u1=sent_to_tensor(dict_data,self.history.history_strings[-2]).unsqueeze(0)
-        u2=sent_to_tensor(dict_data,batch['observations'][0]['text']).unsqueeze(0)
-        u3=sent_to_tensor(dict_data,batch['labels'][0]).unsqueeze(0)
+        text_list=[]
+        u1=[]
+        u2=[]
+        u3=[]
+        l_u1=[]
+        l_u2=[]
+        l_u3=[]
+        observations=batch['observations']
+        for sample in observations:
+            text_list.append(sample['text']+sample['labels'][0])
+            #print(sample['text']+sample['labels'][0])
+        text_list=sorted(text_list,key=len,reverse=True)
+        for text in text_list:
+            if len(l_u1)>len(observations):
+                break
+            text=re.split(' \. | \? |!', text)
+            #print(text)
+            for i in range(int(len(text)/3)):
+                try:
+                    if len(text[i*3]+text[i*3+1]+text[i*3+2])<30:
+                        continue
+                    u1.append(sent_to_tensor(dict_data,text[i*3]))
+                    u2.append(sent_to_tensor(dict_data,text[i * 3+1]))
+                    u3.append(sent_to_tensor(dict_data,text[i * 3+2]))
+                    l_u1.append(len(u1[-1]))
+                    l_u2.append(len(u2[-1]))
+                    l_u3.append(len(u3[-1]))
+                except:
+                    pass
+
+        u1=torch.LongTensor(u1)
+        u2 = torch.LongTensor(u2)
+        u3 = torch.LongTensor(u3)
         #sample_batch=custom_collate_fn(u1,u2,u3,options.batchsize)
-        sample_batch=(u1,[min(len(u1),10003)],u2,[min(len(u2),10003)],u3,[min(len(u3),10003)])
+        sample_batch=(u1,l_u1,u2,l_u2,u3,l_u3)
         #print(sample_batch)
         new_tc_ratio = 2100.0 / (2100.0 + math.exp(batch_id / 2100.0))
         model.dec.set_tc_ratio(new_tc_ratio)
@@ -129,6 +159,7 @@ class HredAgent(TorchGeneratorAgent):
         self.update_params()
 
     def eval_step(self,batch):
+        #print(self.opt)
         # for each row in batch, convert tensor to back to text strings
         self.inference_beam(batch)
         answer = self.uniq_answer()
