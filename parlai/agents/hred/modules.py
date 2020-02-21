@@ -12,7 +12,7 @@ class Option_object:
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
-def sent_to_tensor(dict,sent):
+def sent_to_tensor(dict,sent,limit=True):
     vec=[1]
     #print(sent)
     words=sent.split(' ')
@@ -23,11 +23,14 @@ def sent_to_tensor(dict,sent):
             vec.append(dict[tok])
         except:
             vec.append(0)
-        count+=1
-        if count>15:
-            break
-    for i in range(count,16):
-        vec.append(0)
+        count += 1
+        if limit==True:
+            if count>15:
+                break
+    if limit==True:
+        for i in range(count,16):
+            vec.append(0)
+    vec.append(2)
 
     return vec,count
 
@@ -182,6 +185,7 @@ class BaseEncoder(nn.Module):
             h_0 = h_0.cuda()
         x_emb = self.embed(x)
         x_emb = self.drop(x_emb)
+        #print(x_emb,x_lens)
         x_emb = torch.nn.utils.rnn.pack_padded_sequence(x_emb, x_lens, batch_first=True,enforce_sorted=False)
         x_o, x_hid = self.rnn(x_emb, h_0)
         # assuming dimension 0, 1 is for layer 1 and 2, 3 for layer 2

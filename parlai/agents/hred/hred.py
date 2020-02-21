@@ -166,7 +166,7 @@ class HredAgent(TorchGeneratorAgent):
         # for each row in batch, convert tensor to back to text strings
         self.inference_beam(batch)
         answer = self.uniq_answer()
-        answer = answer.replace('<s> ', '').replace(' </s>', '')
+        answer = answer.replace('<s> ', '').replace(' </s>', '').replace('<unk>','')
         return Output(text=[answer])
 
     def build_model(self):
@@ -280,19 +280,21 @@ class HredAgent(TorchGeneratorAgent):
             sample_batch = (u1, l_u1, u2, l_u2, u3, l_u3)
         else:
             #print(observations)
-            u2,l_u2 = sent_to_tensor(dict_data, observations[0]['text'])
+            u2,l_u2 = sent_to_tensor(dict_data, observations[0]['text'],limit=False)
             u2 = torch.LongTensor(u2).unsqueeze(0)
             try:
-                u1,l_u1=sent_to_tensor(dict_data, self.history.history_strings[-2])
+                u1,l_u1=sent_to_tensor(dict_data, self.history.history_strings[-2],limit=False)
                 u1 = torch.LongTensor(u1).unsqueeze(0)
             except:
-                u1= torch.LongTensor([[1,2]])
-                l_u1=2
+                t,c= sent_to_tensor(dict_data, '<s> <s> </s>',limit=False)
+                u1=torch.LongTensor(t).unsqueeze(0)
+                l_u1=c
             if batch['label_vec'] is None:
-                u3 = torch.LongTensor([[1,2]])
-                l_u3=2
+                t ,c= sent_to_tensor(dict_data, '<s> <s> </s>',limit=False)
+                u3 = torch.LongTensor(t).unsqueeze(0)
+                l_u3=c
             else:
-                u3,l_u3 = sent_to_tensor(dict_data, batch['labels'][0])
+                u3,l_u3 = sent_to_tensor(dict_data, batch['labels'][0],limit=False)
                 u3 = torch.LongTensor(u3).unsqueeze(0)
 
             # sample_batch=custom_collate_fn(u1,u2,u3,options.batchsize)
@@ -305,13 +307,14 @@ class HredAgent(TorchGeneratorAgent):
             u1 = u1.cuda()
             u2 = u2.cuda()
             u3 = u3.cuda()
-        #(u1,u2,u3)
+        #print(u1,u2,u3)
         o1, o2 = self.model.base_enc((u1, u1_lens)), self.model.base_enc((u2, u2_lens))
         qu_seq = torch.cat((o1, o2), 1)
         # if we need to decode the intermediate queries we may need the hidden states
         final_session_o = self.model.ses_enc(qu_seq)
         # forward(self, ses_encoding, x=None, x_lens=None, beam=5 ):
         for k in range(len(observations)):
+           #(k)
             sent = self.generate(final_session_o[k, :, :].unsqueeze(0), options)
             pt = tensor_to_sent(sent, inv_dict)
             #print(pt)
