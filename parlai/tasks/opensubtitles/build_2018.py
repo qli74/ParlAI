@@ -74,6 +74,13 @@ CLEANUP_REPLACE_RULES = [
     ("i̇", "i"),
 ]
 
+MOST_FREQUENT_WORDS=[
+'the','of','and','a','to','in','is','you','that','it',
+'he','was','for','on','are','as','with','his','they','i',
+'at','be','this','have','from','or','one','had','by','word',
+'but','not','what','all','were','we','when','your','can','said',
+'there','use','an','each','which','she','do','how','their','if'
+]
 
 def get_movie_id(filename_path):
     dirpath, filename = os.path.split(filename_path)
@@ -122,8 +129,13 @@ def normalize_apostrophe(sentence):
 def clean_text(words):
     if len(words) > 0 and words[-1] == ':':
         return None
+    if len(words)> 100:
+        return None
+    if len([ch for ch in MOST_FREQUENT_WORDS if ch in words]) ==0:
+        return None
     sentence = ' '.join(words).strip(' -').lower()
-
+    if 'http' in sentence:
+        return None
     sentence = CLEAN_BRACKETS_REGEX.sub('', sentence)
     if len([ch for ch in BRACKETS_CHARACTERS if ch in sentence]) > 0:
         return None
@@ -220,7 +232,8 @@ def extract_data_from_xml(xml_object):
             conversation.append(sentence)
         else:
             if len(conversation) > 1:
-                yield conversation
+                if conversation[0][-1]=='?':
+                    yield conversation
             conversation = []
             if sentence is not None:
                 conversation.append(sentence)

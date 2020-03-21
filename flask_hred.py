@@ -28,7 +28,7 @@ def new_game():
 def next_round(Text):
     #############################
     # Launch a command with pipes
-    p = subprocess.Popen(['python -m parlai.scripts.interactive -mf ../model/myhred'], shell=True,
+    p = subprocess.Popen(['python -m parlai.scripts.interactive -mf ../model2/myhred'], shell=True,
                          stdout=subprocess.PIPE,
                          stdin=subprocess.PIPE)
 

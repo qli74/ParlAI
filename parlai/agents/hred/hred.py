@@ -157,7 +157,7 @@ class HredAgent(TorchGeneratorAgent):
         self.clip_gnorm()
         self.optimizer.step()
         self.metrics['loss']=tr_loss / num_words
-        #print('training loss: ',tr_loss / num_words)
+        print('training loss: ',tr_loss / num_words)
         self.batch_id += 1
         self.update_params()
 

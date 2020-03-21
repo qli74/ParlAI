@@ -4,4 +4,4 @@
 # LICENSE file in the root directory of this source tree.
 
 # hack to make sure -m transformer/generator works as expected
-from .transformer import TransformerGeneratorAgent as GeneratorAgent  # noqa: F401
+from .transformer import TransformerGeneratorAgent as GeneratorAgent # noqa: F401

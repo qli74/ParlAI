@@ -724,6 +724,7 @@ class TorchGeneratorAgent(TorchAgent, ABC):
 
         cand_choices = None
         # TODO: abstract out the scoring here
+
         if self.rank_candidates:
             # compute roughly ppl to rank candidates
             cand_choices = []
@@ -901,6 +902,7 @@ class TorchGeneratorAgent(TorchAgent, ABC):
             selection = torch.cat(
                 [b.get_output_from_current_step() for b in beams]
             ).unsqueeze(-1)
+
             decoder_input = torch.cat([decoder_input, selection], dim=-1)
 
         # get all finilized candidates for each sample (and validate them)
@@ -908,8 +910,7 @@ class TorchGeneratorAgent(TorchAgent, ABC):
 
         # get the top prediction for each beam (i.e. minibatch sample)
         beam_preds_scores = [n_best_list[0] for n_best_list in n_best_beam_preds_scores]
-
-        return beam_preds_scores, beams
+        return n_best_beam_preds_scores, beams
 
 
 class _HypothesisTail(object):
