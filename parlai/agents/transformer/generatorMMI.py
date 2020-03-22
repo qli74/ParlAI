@@ -16,7 +16,7 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
         """
         Evaluate a single batch of examples.
         """
-
+        print(batch)
         if batch.text_vec is None and batch.image is None:
             return Output('N')
         if batch.text_vec is not None:
