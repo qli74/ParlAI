@@ -11,7 +11,7 @@ class ModelEvaluatorOnboardWorld(MTurkOnboardWorld):
     def parley(self):
         ad = {}
         ad['id'] = 'System'
-        ad['text'] = 'Welcome onboard! Enter anything to confirm you\'re here.'
+        ad['text'] = 'Welcome onboard! Enter anything and rate the response'
         self.mturk_agent.observe(ad)
         self.mturk_agent.act()
         self.episodeDone = True

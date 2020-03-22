@@ -1598,7 +1598,6 @@ def create_task(opt: Opt, user_agents, default_world=None):
         # Multitask teacher/agent
         # TODO: remove and replace with multiteachers only?
         world = MultiWorld(opt, user_agents, default_world=default_world)
-
     if opt.get('numthreads', 1) > 1:
         # use hogwild world if more than one thread requested
         # hogwild world will create sub batch worlds as well if bsz > 1

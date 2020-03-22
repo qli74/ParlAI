@@ -10,14 +10,14 @@ task_config = {}
 On the Amazon Mechanical Turk web site, the HIT title appears in search results,
 and everywhere the HIT is mentioned.
 """
-task_config['hit_title'] = 'Give a rating to a dialog between two people'
+task_config['hit_title'] = 'Give a rating to responses of a MMI model'
 
 
 """A description includes detailed information about the kind of task the HIT contains.
 On the Amazon Mechanical Turk web site, the HIT description appears in the expanded
 view of search results, and in the HIT and assignment screens.
 """
-task_config['hit_description'] = 'Give a rating to a dialog between two people.'
+task_config['hit_description'] = 'Give a rating to responses of a MMI model'
 
 
 """One or more words or phrases that describe the HIT, separated by commas.
@@ -32,7 +32,7 @@ and on the left side of the chat page. Supports HTML formatting.
 task_config[
     'task_description'
 ] = '''\'\'\'
-In this task, you are going to read a dialog between two people, and you will need to give a rating on how good the response is.<br><br>
+In this task, you are going to read responses of a MMI model, and you will need to give a rating on how good the response is.<br><br>
 Example:<br><br>
 ------------------- Task Begin ------------------- <br><br>
 <b>Model Evaluator</b>:<br>

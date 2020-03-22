@@ -16,8 +16,9 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
         """
         Evaluate a single batch of examples.
         """
+
         if batch.text_vec is None and batch.image is None:
-            return
+            return Output('N')
         if batch.text_vec is not None:
             bsz = batch.text_vec.size(0)
         else:
@@ -41,7 +42,7 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
                 RuntimeWarning,
             )
         else:
-            maxlen = self.label_truncate or 256
+            maxlen = self.label_truncate or 20
             n_best_beam_preds_scores, _ = self._generate(batch, self.beam_size, maxlen)
             preds=[]
             scores=[]
@@ -55,7 +56,6 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
         if self.rank_candidates:
             # compute MMI to rank candidates
             bestpreds = []
-            print(bsz,batch)
             for i in range(bsz):
                 cands, _ = self._pad_tensor(preds[i])
                 cand_scores = self.computeMMI(batch.text_vec[i],cands)
@@ -70,11 +70,12 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
         return Output(text, cand_choices, token_losses=token_losses)
 
 
+
     def computeMMI(self,source,cands):
         num_cands = len(cands)
         max_ts=len(cands[0])
         bsz=1
-        print(source.unsqueeze(0))
+        #print(source.unsqueeze(0))
         encoder_states = self.model.encoder(source.unsqueeze(0))
         decoder_input = (
             torch.LongTensor([self.START_IDX]).expand(bsz, 1)
