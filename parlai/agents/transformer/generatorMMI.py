@@ -93,6 +93,7 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
     def __init__(self, opt, shared=None):
         super().__init__(opt, shared)
         opt_inv=deepcopy(self.opt)
+        opt_inv['model'] = 'transformer/generatorMMI'
         opt_inv['model_file'] = self.opt['model_file']+'_inv'
         opt_inv['override']['model_file'] = self.opt['model_file']+'_inv'
         self.model_inv=TransformerGeneratorModel(opt_inv, self.dict)
