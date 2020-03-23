@@ -79,12 +79,11 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
         w=0.7
         #print(source.unsqueeze(0))
         encoder_states = self.model.encoder(source.unsqueeze(0))
-        print(len(encoder_states[0][0][0]))
         p=[]
         for c in range(num_cands):
             cand=cands[c]
             decoder_input=cand.unsqueeze(0)
-            logits,preds=self.model_in.decode_forced(encoder_states,decoder_input)
+            logits,preds=self.model_inv.decode_forced(encoder_states,decoder_input)
             scores = logits.view(-1, logits.size(-1))
             scores = self.criterion(scores, decoder_input.view(-1))
             #print(sum([logits[0][i][int(cand[i])] for i in range(len(cand))]))
@@ -96,7 +95,7 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
         opt_inv=deepcopy(self.opt)
         opt_inv['model_file'] = self.opt['model_file']+'_inv'
         opt_inv['override']['model_file'] = self.opt['model_file']+'_inv'
-        self.model_in=TransformerGeneratorModel(opt_inv, self.dict)
+        self.model_inv=TransformerGeneratorModel(opt_inv, self.dict)
         if self.use_cuda:
-            self.model_in.cuda()
+            self.model_inv.cuda()
 
