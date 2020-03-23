@@ -96,6 +96,7 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
         opt_inv['model'] = 'transformer/generatorMMI'
         opt_inv['model_file'] = self.opt['model_file']+'_inv'
         opt_inv['override']['model_file'] = self.opt['model_file']+'_inv'
+        opt_inv['override']['model'] = self.opt['model'] + '_inv'
         self.model_inv=TransformerGeneratorModel(opt_inv, self.dict)
         if self.use_cuda:
             self.model_inv.cuda()
