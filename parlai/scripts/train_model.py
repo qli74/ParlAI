@@ -709,6 +709,8 @@ class TrainLoop:
             # reload best validation model
             self.agent = create_agent(opt)
 
+        return
+        #skip validate_eval & test_eval'
         valid_worlds = load_eval_worlds(self.agent, opt, 'valid')
         max_exs = opt['validation_max_exs'] if opt.get('short_final_eval') else -1
         v_report = run_eval(valid_worlds, opt, 'valid', max_exs, write_log=True)

@@ -10,13 +10,16 @@ import torch
 from parlai.utils.misc import warn_once
 from parlai.core.torch_agent import Batch, Output
 from parlai.utils.torch import argsort
+from .modules import TransformerGeneratorModel
+from copy import deepcopy
+
 
 class GeneratorMMIAgent(TransformerGeneratorAgent):
     def eval_step(self, batch):
         """
         Evaluate a single batch of examples.
         """
-        #print(batch)
+        #print(self.model._encoder_input(batch))
         if batch.text_vec is None and batch.image is None:
             return Output('N')
         if batch.text_vec is not None:
@@ -58,7 +61,7 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
             bestpreds = []
             for i in range(bsz):
                 cands, _ = self._pad_tensor(preds[i])
-                cand_scores = self.computeMMI(batch.text_vec[i],cands)
+                cand_scores = self.computeMMI(batch.text_vec[i],cands,list(scores[i]))
                 _, ordering = cand_scores.sort()
                 bestpreds.append(preds[i][ordering[0]])
         text = [self._v2t(p) for p in bestpreds] if bestpreds is not None else None
@@ -69,26 +72,31 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
             self._compute_nltk_bleu(batch, text)
         return Output(text, cand_choices, token_losses=token_losses)
 
-
-
-    def computeMMI(self,source,cands):
+    def computeMMI(self,source,cands,ptscores):
         num_cands = len(cands)
         max_ts=len(cands[0])
         bsz=1
+        w=0.7
         #print(source.unsqueeze(0))
         encoder_states = self.model.encoder(source.unsqueeze(0))
-        decoder_input = (
-            torch.LongTensor([self.START_IDX]).expand(bsz, 1)
-        )
+        print(len(encoder_states[0][0][0]))
         p=[]
         for c in range(num_cands):
             cand=cands[c]
-            incr_state = None
-            scores, incr_state = self.model.decoder(decoder_input, encoder_states, incr_state)
-            for _ts in range(max_ts-1):
-                s, incr_state = self.model.decoder(cand[_ts].view(bsz,-1), encoder_states, incr_state)
-                s = F.log_softmax(s, dim=-1)
-                scores=torch.cat((scores,s),1)
-            p.append(sum([scores[0][i][int(cand[i])] for i in range(len(cand))]))
+            decoder_input=cand.unsqueeze(0)
+            logits,preds=self.model_in.decode_forced(encoder_states,decoder_input)
+            scores = logits.view(-1, logits.size(-1))
+            scores = self.criterion(scores, decoder_input.view(-1))
+            #print(sum([logits[0][i][int(cand[i])] for i in range(len(cand))]))
+            p.append(sum(scores))
         return torch.tensor(p)
+
+    def __init__(self, opt, shared=None):
+        super().__init__(opt, shared)
+        opt_inv=deepcopy(self.opt)
+        opt_inv['model_file'] = self.opt['model_file']+'_inv'
+        opt_inv['override']['model_file'] = self.opt['model_file']+'_inv'
+        self.model_in=TransformerGeneratorModel(opt_inv, self.dict)
+        if self.use_cuda:
+            self.model_in.cuda()
 
