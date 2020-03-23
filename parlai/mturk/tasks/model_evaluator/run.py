@@ -20,8 +20,8 @@ def main():
     argparser.add_mturk_args()
     argparser.set_defaults(
         model='transformer/generatorMMI',
-        model_file='~/ParlAI/tmp/transMMI_daily',
-        dict_file='~/ParlAI/tmp/transMMI_daily.dict',
+        model_file='/home/lexinelqw/ParlAI/tmp/transMMI_daily',
+        dict_file='/home/lexinelqw/ParlAI/tmp/transMMI_daily.dict',
         inference='beam',
         beam_size=4
     )
