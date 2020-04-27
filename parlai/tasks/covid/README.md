@@ -11,7 +11,7 @@ cd ParlAI
 python examples/display_data.py -t covid -n 1
 ```
 
-2.web chat on localhost (default port: 35496, or use --port PORT_NUMBER)
+2.web chat on localhost (use default port: 35496)
 ```
 ./start_browser_service.sh
 ```
