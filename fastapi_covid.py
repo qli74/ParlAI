@@ -1,13 +1,8 @@
-import logging,subprocess
-
-from random import randint
-
+import subprocess
 from fastapi import FastAPI
 
 app = FastAPI()
 
-#############################
-# Launch a command with pipes
 p = subprocess.Popen(['python -m parlai.scripts.interactive -mf ../model/poly/covid7'], shell=True,
                      stdout=subprocess.PIPE,
                      stdin=subprocess.PIPE)
