@@ -25,7 +25,7 @@ def _prBlueBG(text):
 
     :param text: The text to be printed
     """
-    print("\033[44m{}\033[0m".format(text), sep="")
+    print(text)
 
 
 def on_message(ws, message):
@@ -36,12 +36,10 @@ def on_message(ws, message):
     :param message: json with 'text' field to be printed
     """
     incoming_message = json.loads(message)
-    print("\033[0m\n")
     print("Bot: " + incoming_message['text'])
     quick_replies = incoming_message.get('quick_replies')
     if quick_replies is not None and len(quick_replies) > 0:
         print(f"\nOptions: [{'|'.join(quick_replies)}]")
-    print("\033[44m\n")
 
 
 def on_error(ws, error):
@@ -61,7 +59,7 @@ def on_close(ws):
     :param ws: WebSocketApp
     """
     # Reset color formatting if necessary
-    print("\033[0m")
+    print("")
     print("Connection closed")
 
 
@@ -72,8 +70,8 @@ def _run(ws, id):
     :param ws: websocket.WebSocketApp
     """
     while True:
-        x = input("\033[44m Me: ")
-        print("\033[0m", end="")
+        x = input("Me: ")
+        print("", end="")
         data = {}
         data['id'] = id
         data['text'] = x
@@ -112,7 +110,7 @@ def setup_args():
 if __name__ == "__main__":
     opt = setup_args()
     port = opt.get('port', 34596)
-    print("Connecting to port: ", port)
+    #print("Connecting to port: ", port)
     ws = websocket.WebSocketApp(
         "ws://localhost:{}/websocket".format(port),
         on_message=on_message,

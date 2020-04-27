@@ -20,10 +20,10 @@ def main():
     argparser.add_mturk_args()
     argparser.set_defaults(
         model='transformer/generatorMMI',
-        model_file='/home/lexinelqw/ParlAI/tmp/transMMI_daily',
-        dict_file='/home/lexinelqw/ParlAI/tmp/transMMI_daily.dict',
+        model_file='/Users/lexine/Documents/DLforDialog/ParlAI/tmp/transMMI',
+        dict_file='/Users/lexine/Documents/DLforDialog/ParlAI/tmp/transMMI.dict',
         inference='beam',
-        beam_size=4
+        beam_size=20
     )
     # The dialog model we want to evaluate
     from parlai.agents.transformer.generatorMMI import GeneratorMMIAgent

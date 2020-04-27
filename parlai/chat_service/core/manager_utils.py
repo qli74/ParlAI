@@ -259,10 +259,17 @@ class ChatServiceWorldRunner:
         )
         world = world_generator(self.opt, agents)
         task.world = world
-
         while not world.episode_done() and not self.system_done:
             ret_val = world.parley()
             time.sleep(0.3)
+            ####enable single_turn####
+            if world_name=='MessengerBotChatTaskWorld':
+                if world.new_world:
+                    world.shutdown()
+                    world = world_generator(self.opt, agents,first_time=False)
+                    task.world = world
+            ##########################
+        print('end')
         world.shutdown()
         world_data = world.data if hasattr(world, "data") else {}
         return ret_val, world_data

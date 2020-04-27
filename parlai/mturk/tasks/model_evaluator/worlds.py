@@ -33,7 +33,7 @@ class ModelEvaluatorWorld(MTurkTaskWorld):
 
     def parley(self):
         self.task_world.parley()
-
+        self.task_world.parley()
         ad = {}
         # Show the dialog model's response to the context, and ask the turker
         # to rate the response

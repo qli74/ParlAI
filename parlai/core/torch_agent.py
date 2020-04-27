@@ -1798,6 +1798,7 @@ class TorchAgent(ABC, Agent):
         # world, so we need to handle this ourselves.
         response = self.batch_act([self.observation])[0]
         self.self_observe(response)
+        #print(response)
         return response
 
     def batch_act(self, observations):

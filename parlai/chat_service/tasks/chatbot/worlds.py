@@ -32,18 +32,20 @@ class MessengerBotChatTaskWorld(World):
 
     MAX_AGENTS = 1
 
-    def __init__(self, opt, agent, bot):
+    def __init__(self, opt, agent, bot,first_time = True):
         self.agent = agent
         self.episodeDone = False
         self.model = bot
-        self.first_time = True
+        self.first_time = first_time
+        self.single_turn=opt['single_turn']
+        self.new_world = False
 
     @staticmethod
-    def generate_world(opt, agents):
+    def generate_world(opt, agents,first_time = True):
         if opt['model'] is None and opt['model_file'] is None:
             raise RuntimeError("Model must be specified")
         return MessengerBotChatTaskWorld(
-            opt, agents[0], create_agent_from_shared(opt['shared_bot_params'])
+            opt, agents[0], create_agent_from_shared(opt['shared_bot_params']),first_time
         )
 
     @staticmethod
@@ -55,7 +57,7 @@ class MessengerBotChatTaskWorld(World):
             self.agent.observe(
                 {
                     'id': 'World',
-                    'text': 'Welcome to the ParlAI Chatbot demo. '
+                    'text': 'Welcome to the COVID-19 Chatbot demo. '
                     'You are now paired with a bot - feel free to send a message.'
                     'Type [DONE] to finish the chat.',
                 }
@@ -72,10 +74,13 @@ class MessengerBotChatTaskWorld(World):
                 self.model.observe(a)
                 response = self.model.act()
                 print("===response====")
-                print(response)
+                print(response['id'],response['episode_done'],response['text'])
                 print("~~~~~~~~~~~")
-                response['id'] = ''
+                response.force_set('id', '')
                 self.agent.observe(response)
+                if self.single_turn:
+                    self.new_world=True
+
 
     def episode_done(self):
         return self.episodeDone
@@ -113,7 +118,7 @@ class MessengerOverworld(World):
             self.agent.observe(
                 {
                     'id': 'Overworld',
-                    'text': 'Welcome to the overworld for the ParlAI messenger '
+                    'text': 'Welcome to the overworld for the COVID-19 QA '
                     'chatbot demo. Please type "begin" to start.',
                     'quick_replies': ['begin'],
                 }

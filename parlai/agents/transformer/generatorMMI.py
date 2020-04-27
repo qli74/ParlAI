@@ -54,7 +54,6 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
                 preds.append(p)
                 scores.append(s)
         cand_choices = None
-
         self.rank_candidates=True
         if self.rank_candidates:
             # compute MMI to rank candidates
@@ -76,26 +75,29 @@ class GeneratorMMIAgent(TransformerGeneratorAgent):
         num_cands = len(cands)
         max_ts=len(cands[0])
         bsz=1
-        w=0.7
+        w=0.8
+        n=0.1
         #print(source.unsqueeze(0))
         encoder_states = self.model.encoder(source.unsqueeze(0))
         p=[]
+        #print(cands)
         for c in range(num_cands):
             cand=cands[c]
             decoder_input=cand.unsqueeze(0)
             logits,preds=self.model_inv.decode_forced(encoder_states,decoder_input)
             scores = logits.view(-1, logits.size(-1))
             scores = self.criterion(scores, decoder_input.view(-1))
-            #print(sum([logits[0][i][int(cand[i])] for i in range(len(cand))]))
-            p.append(sum(scores))
+            #s=sum([logits[0][i][int(cand[i])] for i in range(len(cand))])
+            s=-sum(scores)
+            p.append((1-w)*s+w*ptscores[c]+n*len(cand.nonzero()[0]))
         return torch.tensor(p)
 
     def __init__(self, opt, shared=None):
         super().__init__(opt, shared)
         opt_inv=deepcopy(self.opt)
         #opt_inv['model'] = 'transformer/generatorMMI'
-        opt_inv['model_file'] = self.opt['model_file']+'_inv'
-        opt_inv['override']['model_file'] = self.opt['model_file']+'_inv'
+        opt_inv['model_file'] = self.opt['model_file']+'_inv5'
+        opt_inv['override']['model_file'] = self.opt['model_file']+'_inv5'
         self.model_inv=TransformerGeneratorModel(opt_inv, self.dict)
         if self.use_cuda:
             self.model_inv.cuda()

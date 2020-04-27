@@ -46,6 +46,7 @@ def run(opt):
 
 
 if __name__ == '__main__':
+    print('9999')
     opt = setup_args()
     config_path = opt.get('config_path')
     config = utils.parse_configuration_file(config_path)

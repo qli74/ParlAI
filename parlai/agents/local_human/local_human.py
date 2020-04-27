@@ -55,8 +55,11 @@ class LocalHumanAgent(Agent):
         reply['id'] = self.getID()
         reply_text = input("Enter Your Message: ")
         reply_text = reply_text.replace('\\n', '\n')
+        #print(reply_text)
+        #print(self.opt['single_turn'])
         if self.opt.get('single_turn', False):
             reply_text += '[DONE]'
+        #print(reply_text)
         reply['episode_done'] = False
         reply['label_candidates'] = self.fixedCands_txt
         if '[DONE]' in reply_text:
@@ -64,6 +67,7 @@ class LocalHumanAgent(Agent):
             self.episodeDone = True
             reply_text = reply_text.replace('[DONE]', '')
         reply['text'] = reply_text
+        #print(reply_text)
         return reply
 
     def episode_done(self):
