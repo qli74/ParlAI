@@ -15,7 +15,9 @@ python examples/display_data.py -t covid -n 1
 ```
 ./start_browser_service.sh
 ```
+or change 'localhost' to ip address in PariAI/parlai/chat_service/services/browser_chat/client.py _run_browser()
 ![example](https://github.com/qli74/ParlAI/blob/master/cov1.png)
+
 
 3.terminal chat
 ```
