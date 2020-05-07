@@ -18,7 +18,9 @@ opt:
     no_cuda: True
     interactive_mode: True
     single_turn: True
+    load_from_checkpoint: False
   single_turn: True
+  load_from_checkpoint: False
   no_cuda: True
 additional_args:
   page_id: 1 # Configure Your Own Page
