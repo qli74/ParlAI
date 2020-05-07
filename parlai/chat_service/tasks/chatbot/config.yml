@@ -13,11 +13,13 @@ opt:
   model: transformer/polyencoder
   model_file: model/poly/covid7
   encode_candidate_vecs: true
+  history_size: 1
   override:
     model: transformer/polyencoder
     no_cuda: True
     interactive_mode: True
     single_turn: True
+    history_size: 1
   single_turn: True
   no_cuda: True
 additional_args:
