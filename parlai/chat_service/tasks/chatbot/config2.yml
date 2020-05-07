@@ -1,0 +1,24 @@
+tasks:
+  default:
+    onboard_world: MessengerBotChatOnboardWorld
+    task_world: MessengerBotChatTaskWorld
+    timeout: 1800
+    agents_required: 1
+task_name: chatbot
+world_module: parlai.chat_service.tasks.chatbot.worlds
+overworld: MessengerOverworld
+max_workers: 30
+opt:
+  debug: True
+  model: transformer/polyencoder
+  model_file: model/poly/covidqQA
+  encode_candidate_vecs: true
+  override:
+    model: transformer/polyencoder
+    no_cuda: True
+    interactive_mode: True
+    single_turn: True
+  single_turn: True
+  no_cuda: True
+additional_args:
+  page_id: 1 # Configure Your Own Page

@@ -130,9 +130,9 @@ def on_close(ws):
 
 
 def _run_browser():
-    httpd = HTTPServer(('0.0.0.0', 1234), BrowserHandler)
+    httpd = HTTPServer(('0.0.0.0', 5678), BrowserHandler)
 
-    print('Please connect to the link: http://{}:{}/'.format('0.0.0.0', 1234))
+    print('Please connect to the link: http://{}:{}/'.format('0.0.0.0', 5678))
 
     SHARED['wb'] = httpd
 
