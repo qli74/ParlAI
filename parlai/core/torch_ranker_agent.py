@@ -691,6 +691,11 @@ class TorchRankerAgent(TorchAgent):
 
             cands = self.fixed_candidates
             cand_vecs = self.fixed_candidate_vecs
+            if mode=='neval':
+                if label_vecs is not None:
+                    return (cands, cand_vecs, label_vecs.new_empty((batchsize)))
+                else:
+                    return (cands, cand_vecs, None)
 
             if label_vecs is not None:
                 label_inds = label_vecs.new_empty((batchsize))

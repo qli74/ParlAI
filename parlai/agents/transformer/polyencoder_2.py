@@ -13,10 +13,16 @@ from .modules import get_n_positions_from_options
 from parlai.core.torch_ranker_agent import TorchRankerAgent
 from .transformer import TransformerRankerAgent
 from .modules import BasicAttention, MultiHeadAttention
+from parlai.core.torch_agent import Batch, Output
+from .polyencoder import PolyencoderAgent
+from parlai.core.metrics import AverageMetric
+from itertools import islice
+from copy import deepcopy
+import random
 import torch
 
 
-class PolyencoderAgent(TorchRankerAgent):
+class Polyencoder2Agent(TorchRankerAgent):
     """
     Poly-encoder Agent.
 
@@ -109,12 +115,145 @@ class PolyencoderAgent(TorchRankerAgent):
                 raise ValueError('Cannot combine --data-parallel and distributed mode')
             if shared is None:
                 self.model = torch.nn.DataParallel(self.model)
+        opt_qQ = deepcopy(self.opt)
+        # opt_inv['model'] = 'transformer/generatorMMI'
+        opt_qQ['model'] = ' transformer/polyencoder'
+        opt_qQ['override']['model'] = ' transformer/polyencoder'
+        opt_qQ['model_file'] = 'model/poly/covidqQ'
+        opt_qQ['override']['model_file'] = 'model/poly/covidqQ'
+        opt_qQ['fixed_candidates_path']='/Users/lexine/Documents/DLforDialog/project/qQcands.txt'
+        opt_qQ['override']['fixed_candidates_path']='/Users/lexine/Documents/DLforDialog/project/qQcands.txt'
+        opt_qQ['history_size']=0
+        opt_qQ['override']['history_size'] = 0
+        self.model_qQ = PolyencoderAgent(opt_qQ)
 
     def build_model(self, states=None):
         """
         Return built model.
         """
         return PolyEncoderModule(self.opt, self.dict, self.NULL_IDX)
+
+    def eval_step(self, batch):
+        """
+        Evaluate a single batch of examples.
+        """
+        if batch.text_vec is None and batch.image is None:
+            return
+        batchsize = (
+            batch.text_vec.size(0)
+            if batch.text_vec is not None
+            else batch.image.size(0)
+        )
+        self.model.eval()
+
+        cands, cand_vecs, label_inds = self._build_candidates(
+            batch, source=self.eval_candidates, mode='eval'
+        )
+        cand_encs = None
+        if self.encode_candidate_vecs and self.eval_candidates in ['fixed', 'vocab']:
+            # if we cached candidate encodings for a fixed list of candidates,
+            # pass those into the score_candidates function
+            if self.fixed_candidate_encs is None:
+                self.fixed_candidate_encs = self._make_candidate_encs(
+                    cand_vecs
+                ).detach()
+            if self.eval_candidates == 'fixed':
+                cand_encs = self.fixed_candidate_encs
+            elif self.eval_candidates == 'vocab':
+                cand_encs = self.vocab_candidate_encs
+
+        cands2, cand_vecs2, label_inds2 = self.model_qQ._build_candidates(
+            batch, source=self.model_qQ.eval_candidates, mode='neval'
+        )
+        cand_encs2 = None
+        if self.model_qQ.encode_candidate_vecs and self.model_qQ.eval_candidates in ['fixed', 'vocab']:
+            # if we cached candidate encodings for a fixed list of candidates,
+            # pass those into the score_candidates function
+            if self.model_qQ.fixed_candidate_encs is None:
+                self.model_qQ.fixed_candidate_encs = self.model_qQ._make_candidate_encs(
+                    cand_vecs2
+                ).detach()
+            if self.model_qQ.eval_candidates == 'fixed':
+                cand_encs2 = self.model_qQ.fixed_candidate_encs
+            elif self.model_qQ.eval_candidates == 'vocab':
+                cand_encs2 = self.model_qQ.vocab_candidate_encs
+
+        sk=3
+        scores1 = self.score_candidates(batch, cand_vecs, cand_encs=cand_encs)
+        scores2= self.model_qQ.score_candidates(batch, cand_vecs2, cand_encs=cand_encs2)
+        scores= sk*scores1+(10-sk)*scores2
+        if self.rank_top_k > 0:
+            _, ranks = scores.topk(
+                min(self.rank_top_k, scores.size(1)), 1, largest=True
+            )
+        else:
+            _, ranks = scores.sort(1, descending=True)
+        _, ranks1 = scores1.sort(1, descending=True)
+        _, ranks2 = scores2.sort(1, descending=True)
+        _, ranks = scores.sort(1, descending=True)
+        if 0:
+            print('###### 1 #######')
+            for i in range(3):
+                print(i)
+                print(scores1[0][ranks1[0][i]])
+                print(cands[ranks1[0][i]][:100])
+            print('###### 2 #######')
+            for i in range(3):
+                print(i)
+                print(scores2[0][ranks2[0][i]])
+                print(cands2[ranks2[0][i]][:100])
+            print('###### all #######')
+            for i in range(3):
+                print(i)
+                print(scores[0][ranks[0][i]])
+                print(cands[ranks[0][i]][:100])
+        newcands=[]
+        for i in range(len(cands)):
+            newcands.append(cands2[i]+'    '+cands[i])
+        cands=newcands
+        # Update metrics
+        if label_inds is not None:
+            loss = self.criterion(scores, label_inds)
+            self.record_local_metric('loss', AverageMetric.many(loss))
+            ranks_m = []
+            mrrs_m = []
+            for b in range(batchsize):
+                rank = (ranks[b] == label_inds[b]).nonzero()
+                rank = rank.item() if len(rank) == 1 else scores.size(1)
+                ranks_m.append(1 + rank)
+                mrrs_m.append(1.0 / (1 + rank))
+            self.record_local_metric('rank', AverageMetric.many(ranks_m))
+            self.record_local_metric('mrr', AverageMetric.many(mrrs_m))
+
+        ranks = ranks.cpu()
+        max_preds = self.opt['cap_num_predictions']
+        cand_preds = []
+        for i, ordering in enumerate(ranks):
+            if cand_vecs.dim() == 2:
+                cand_list = cands
+            elif cand_vecs.dim() == 3:
+                cand_list = cands[i]
+            # using a generator instead of a list comprehension allows
+            # to cap the number of elements.
+            cand_preds_generator = (
+                cand_list[rank] for rank in ordering if rank < len(cand_list)
+            )
+            cand_preds.append(list(islice(cand_preds_generator, max_preds)))
+
+        if (
+            self.opt.get('repeat_blocking_heuristic', True)
+            and self.eval_candidates == 'fixed'
+        ):
+            cand_preds = self.block_repeats(cand_preds)
+
+        if self.opt.get('inference', 'max') == 'max':
+            preds = [cand_preds[i][0] for i in range(batchsize)]
+        else:
+            # Top-k inference.
+            preds = []
+            for i in range(batchsize):
+                preds.append(random.choice(cand_preds[i][0 : self.opt['topk']]))
+        return Output(preds, cand_preds)
 
     def vectorize(self, *args, **kwargs):
         """
@@ -168,7 +307,6 @@ class PolyencoderAgent(TorchRankerAgent):
         return cand_rep
 
     def score_candidates(self, batch, cand_vecs, cand_encs=None):
-        #print(batch)
         """
         Score candidates.
 
@@ -422,6 +560,7 @@ class PolyEncoderModule(torch.nn.Module):
             self.attention, cand_embed, keys, ctxt_rep, ctxt_rep_mask
         )
         scores = torch.sum(ctxt_final_rep * cand_embed, 2)
+
         return scores
 
     def forward(

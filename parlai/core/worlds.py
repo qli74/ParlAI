@@ -122,7 +122,7 @@ class World(object):
             self.acts,
             ignore_fields=self.opt.get('display_ignore_fields', ''),
             prettify=self.opt.get('display_prettify', False),
-            max_len=self.opt.get('max_display_len', 1000),
+            max_len=self.opt.get('max_display_len', 2000),
         )
 
     def episode_done(self):
@@ -339,9 +339,13 @@ class DialogPartnerWorld(World):
         """
         acts = self.acts
         agents = self.agents
+        #print('agent0 output')
         acts[0] = agents[0].act()
+        #print('agent1 observe')
         agents[1].observe(validate(acts[0]))
+        #print('agent1 output')
         acts[1] = agents[1].act()
+        #print('agent0 observe')
         agents[0].observe(validate(acts[1]))
         self.update_counters()
 
@@ -1026,6 +1030,7 @@ class BatchWorld(World):
 
 class DynamicBatchWorld(World):
     def __init__(self, opt: Opt, world: Union[DialogPartnerWorld, MultiWorld]):
+        print('DynamicBatchWorld')
         super().__init__(opt)
         self.opt = opt
 

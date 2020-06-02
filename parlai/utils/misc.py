@@ -626,7 +626,7 @@ def display_messages(
     msgs: List[Dict[str, Any]],
     prettify: bool = False,
     ignore_fields: str = '',
-    max_len: int = 1000,
+    max_len: int = 2000,
 ) -> Optional[str]:
     """
     Return a string describing the set of messages provided.
