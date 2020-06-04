@@ -8,28 +8,37 @@
 
 from parlai.core.build_data import DownloadableFile
 import parlai.core.build_data as build_data
-import os
+import jsonlines as jl
+import numpy as np
+import os,csv
 
-RESOURCES = [
-    DownloadableFile(
-        '1FUv2qit9wQ21NV_dbW5HeZVEzng5CMHE',
-        'train_self_original.txt',
-        '',
-        False,
-        True
-    ),
-    DownloadableFile(
-        '1lnrgxXCc7Y-6Ic_zl7b3tAXonmuGkjI5',
-        'valid_self_original.txt',
-        '',
-        False,
-        True
-    )
-]
+def build_fb_format(q,a,task,dpath):
+    if task == 'train':
+        N = len(a)
+        f = open(os.path.join(dpath, 'train_self_original.txt'), 'w')
+        for k in range(2 * N):
+            i = k%N
+            candindex = np.random.randint(N, size=20).tolist()
+            candindex.append(i)
+            cand = [a[j] for j in candindex]
+            cand = '|'.join(cand)
+            sample = str(1) + ' ' + q[i] + '	' + a[i] + '		' + cand + '\n'
+            f.write(sample)
+        f.close()
 
-
-def build_fb_format():
-    pass
+    if task == 'valid':
+        N = len(a)
+        f = open(os.path.join(dpath, 'valid_self_original.txt'), 'w')
+        for k in range(1, N):
+            # i=np.random.randint(N)
+            i = k
+            candindex = np.random.randint(N, size=20).tolist()
+            candindex.append(i)
+            cand = [a[j] for j in candindex]
+            cand = '|'.join(cand)
+            sample = str(1) + ' ' + q[i] + '	' + a[i] + '		' + cand + '\n'
+            f.write(sample)
+        f.close()
 
 
 def build(opt):
@@ -42,28 +51,51 @@ def build(opt):
             build_data.remove_dir(dpath)
         build_data.make_dir(dpath)
 
-        # Download the data.
-        for downloadable_file in RESOURCES:
-            downloadable_file.download_file(dpath,check=False)
+        dir = '../../../data/scraping/schema_v0.3'
+        print('[reading data from: '+dir+']')
+        blockID=[]
+        with open("../../../data/scraping/blocked_QA_IDs.tsv") as tsvfile:
+            tsvreader = csv.reader(tsvfile, delimiter="\t")
+            for line in tsvreader:
+                blockID.append(line[0])
+
+        f= open(os.path.join(dpath, 'blockID.txt'), 'w')
+        f.write('\n'.join(blockID))
+        f.close()
+
+        q = []  # questions
+        a = []  # answers
+        filelist = []
+        for file in os.listdir(dir):
+            if file.endswith(".jsonl"):
+                filelist.append(os.path.join(dir, file))
+        count = 0
+        #print(filelist)
+        for file in filelist:
+            with jl.open(file) as reader:
+                for obj in reader:
+                    if obj['ID'] in blockID:
+                        continue
+                    if obj['language'] == 'en':
+                        t1=obj['questionText'].replace('\n',' ').replace('\r',' ').replace('\t',' ').replace('  ','')
+                        t2=obj['answerText'].replace('\n',' ').replace('\r',' ').replace('\t',' ').replace('  ','')
+                        if (len(t1) > 5) & (len(t2) > 5):
+                            count += 1
+                            q.append(t1)
+                            a.append(t2)
+
+        f = open(os.path.join(dpath, 'q.txt'), 'w')
+        f.write('\n'.join(q))
+        f.close()
+
+        f = open(os.path.join(dpath, 'a.txt'), 'w')
+        f.write('\n'.join(a))
+        f.close()
+
+        build_fb_format(q, a, 'train', dpath)
+        build_fb_format(q, a, 'valid', dpath)
 
         # Mark the data as built.
         build_data.mark_done(dpath, version)
 
-    dpath = os.path.join(opt['datapath'][:-5], 'model')
-    if not os.path.exists(dpath):
-        os.makedirs(dpath)
-    if not build_data.built(dpath, version):
-        print('[downloading model: covid7]')
-        # Download the model
-        model=DownloadableFile(
-            '13rbP7bxj7Pq412ULUlvgCCIweSzJTwJF',
-            'poly.zip',
-            '',
-            True,
-            True
-        )
-        model.download_file(dpath, check=False)
-
-        # Mark the data as built.
-        build_data.mark_done(dpath, version)
 

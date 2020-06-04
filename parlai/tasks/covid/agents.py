@@ -21,14 +21,14 @@ where TEACHER_NAME is None, SelfOriginal (Self), or SelfRevised.
 '''
 
 
-def _path(opt, persona, use_cands):
+def _path(opt, type,use_cands):
     # Build the data if it doesn't exist.
     build(opt)
     datatype = opt['datatype'].split(':')[0]
     if datatype == 'test':
         warn_once("WARNING: Test set not included. Setting datatype to valid.")
         datatype = 'valid'
-    dt = datatype + '_' + persona
+    dt = datatype+ '_' + type
     cands = '' if use_cands else '_no_cands'
     return os.path.join(opt['datapath'], 'covid', dt + cands + '.txt')
 

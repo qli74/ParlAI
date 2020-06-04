@@ -1186,6 +1186,7 @@ class FbDialogTeacher(DialogTeacher):
                 # x<tab>y<tab>reward<tab>label_candidates
                 # where y, reward, and label_candidates are optional
                 split = line[space_idx + 1 :].split('\t')
+                #print(split)
 
                 # remove empty items and strip each one
                 for i in range(len(split)):
