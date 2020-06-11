@@ -1,35 +1,24 @@
 Task: covid
 ==============
-Description: covid-19 QA data and a poly-encoder model
+Description: covid-19 QA task
 
 Tags: #covid
 
-1.Download files (including train&valid data and model)
+### 1.Download files and check the data
 ```
 git clone https://github.com/qli74/ParlAI
 cd ParlAI
+python setup.py install
 python examples/display_data.py -t covid -n 1
 ```
 
-2.web chat on localhost (use default port: 35496)
-```
-./start_browser_service.sh
-```
-or change 'localhost' to ip address in PariAI/parlai/chat_service/services/browser_chat/client.py _run_browser()
-![example](https://github.com/qli74/ParlAI/blob/master/cov1.png)
+### 2.Train a model 
 
-
-3.terminal chat
-```
-./start_terminal_service.sh
-```
-![example](https://github.com/qli74/ParlAI/blob/master/cov2.png)
-
-
-4.another api file written with fastapi: ParlAI/fastapi_covid.py\
-https://github.com/qli74/ParlAI/blob/master/fastapi_covid.py
-
-5.code for training & eval & interactive
+key parameters:
+* --batchsize: training batchsize
+* -ttim: training time
+* -stim: time interval of saving checkpoint
+* --model-file: model path
 ```
 python examples/train_model.py --init-model zoo:pretrained_transformers/model_poly/model -t covid \
   --model transformer/polyencoder --batchsize 5 --eval-batchsize 10 \
@@ -46,11 +35,35 @@ python examples/train_model.py --init-model zoo:pretrained_transformers/model_po
   --learn-embeddings True --polyencoder-type codes --poly-n-codes 64 \
   --poly-attention-type basic --dict-endtoken __start__ \
   --dict-file  data/models/pretrained_transformers/model_poly/model.dict \
-  --model-file model/poly/covid7 -ttim 10000 -stim 200
+  --model-file ../models/covid -ttim 20000 -stim 200
 ```
+
+### 3. Evaluate the model
 ```
-python examples/eval_model.py -m transformer/polyencoder -mf model/poly/covid7 -t covid --encode-candidate-vecs true --eval-candidates fixed  
+python examples/eval_model.py -m transformer/polyencoder -mf ../models/covid -t covid --encode-candidate-vecs true --eval-candidates inline
 ```
+
+### 4. Interact
 ```
-python examples/interactive.py -m transformer/polyencoder -mf model/poly/covid7 --encode-candidate-vecs true --single-turn True
+python examples/interactive.py -m transformer/polyencoder -mf ../models/covid --encode-candidate-vecs true --single-turn True
 ```
+
+### 5.web chat
+```
+./start_browser_service.sh
+```
+Port number (default: 9924) is set in start_browser_service.sh
+
+IP address (default: 0.0.0.0) is set in PariAI/parlai/chat_service/services/browser_chat/client.py _run_browser()
+
+![example](https://github.com/qli74/ParlAI/blob/master/cov1.png)
+
+### 6.terminal chat
+```
+./start_terminal_service.sh
+```
+![example](https://github.com/qli74/ParlAI/blob/master/cov2.png)
+
+
+### 7.another api file written with fastapi: ParlAI/fastapi_covid.py\
+https://github.com/qli74/ParlAI/blob/master/fastapi_covid.py
