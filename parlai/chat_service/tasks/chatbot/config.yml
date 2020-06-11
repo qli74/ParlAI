@@ -11,7 +11,7 @@ max_workers: 30
 opt:
   debug: True
   model: transformer/polyencoder
-  model_file: model/poly/covid7
+  model_file: ../models/covid
   encode_candidate_vecs: true
   history_size: 1
   override:
