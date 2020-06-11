@@ -161,9 +161,10 @@ class PolyencoderAgent(TorchRankerAgent):
         newcands=[]
         #print(len(cands),len(cands[0]))
         #print(scores.size())
-        for i in range(len(cands)):
-            newcands.append(str(scores[0][i].numpy())+'|'+cands[i])
-        cands=newcands
+        if self.opt['interactive_mode']:
+            for i in range(len(cands)):
+                newcands.append(str(scores[0][i].numpy())+'|'+cands[i])
+            cands=newcands
         # Update metrics
         if label_inds is not None:
             loss = self.criterion(scores, label_inds)
