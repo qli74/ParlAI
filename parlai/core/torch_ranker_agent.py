@@ -16,7 +16,7 @@ from itertools import islice
 import os
 from tqdm import tqdm
 import random
-
+import csv
 import torch
 
 
@@ -142,7 +142,7 @@ class TorchRankerAgent(TorchAgent):
         )
         agent.add_argument(
             '--inference',
-            choices={'max', 'topk'},
+            choices={'max', 'topk','topp'},
             default='max',
             help='Final response output algorithm',
         )
@@ -151,6 +151,18 @@ class TorchRankerAgent(TorchAgent):
             type=int,
             default=5,
             help='K used in Top K sampling inference, when selected',
+        )
+        agent.add_argument(
+            '--topp',
+            type=float,
+            default=15,
+            help='Thre used in Top p sampling inference, when selected',
+        )
+        agent.add_argument(
+            '--ground-truth-path',
+            type=str,
+            default='../ROCdata/testQA.tsv',
+            help='ground truth used to calculate precision and recall score',
         )
 
     def __init__(self, opt: Opt, shared=None):
@@ -209,7 +221,47 @@ class TorchRankerAgent(TorchAgent):
                 self.model, device_ids=[self.opt['gpu']], broadcast_buffers=False
             )
 
+        if os.path.isfile(opt.get('ground_truth_path','None')):
+            groundtruth = []
+            allcands = []
+            Q = {}
+            count=-1
+            c=0
+            cands=[]
+            scores = []
+            gt=[]
+            with open(opt['ground_truth_path']) as tsvfile:
+                tsvreader = csv.reader(tsvfile, delimiter="|")
+                for line in tsvreader: #[q,a,score]
+                    c += 1
+                    cands.append(line[1])  # [q1,q2,score]
+                    scores.append(int(line[2]))
+                    if c == 5:
+                        if max(scores) >= 80:
+                            count += 1
+                            Q[str(count)] = line[0]
+                            allcands.append(cands)
+                            for i in range(5):
+                                if scores[i]>=80:
+                                    gt.append(cands[i])
+                            groundtruth.append(gt)
+                        c = 0
+                        cands=[]
+                        scores = []
+                        gt=[]
+            self.groundtruth=groundtruth
+            self.Q=Q
+            self.allcands=allcands
+            import json
+            with open('groundtruth.json', 'w') as f:
+                json.dump(groundtruth, f)
+            with open('Q.json', 'w') as f:
+                json.dump(Q, f)
+            with open('allcands.json', 'w') as f:
+                json.dump(allcands, f)
+
     def build_criterion(self):
+
         """
         Construct and return the loss function.
 
@@ -421,24 +473,43 @@ class TorchRankerAgent(TorchAgent):
         )
         self.model.eval()
 
-        cands, cand_vecs, label_inds = self._build_candidates(
-            batch, source=self.eval_candidates, mode='eval'
-        )
+        #cands, cand_vecs, label_inds = self._build_candidates(
+        #    batch, source=self.eval_candidates, mode='eval')
+        if os.path.isfile(self.opt.get('ground_truth_path','None')):
+            #print(batch)
+            index = int(batch.observations[0]['text'])
+            query = self.Q[str(index)]
+            batch.observations[0].force_set('text',query)
+            batch.observations[0].force_set('full_text', query)
+            batch['text_vec'] = self._make_candidate_vecs([query])
+            batch.observations[0].force_set('text_vec',batch['text_vec'].squeeze())
+            batch['text_lengths'] = [len(batch.observations[0]['text_vec'])]
+            #print(batch)
+            cands=self.allcands[index]
+            cand_vecs = self._make_candidate_vecs(cands)
+            label_inds=None
+            cand_encs=self._make_candidate_encs(cand_vecs)
 
-        cand_encs = None
-        if self.encode_candidate_vecs and self.eval_candidates in ['fixed', 'vocab']:
-            # if we cached candidate encodings for a fixed list of candidates,
-            # pass those into the score_candidates function
-            if self.fixed_candidate_encs is None:
-                self.fixed_candidate_encs = self._make_candidate_encs(
-                    cand_vecs
-                ).detach()
-            if self.eval_candidates == 'fixed':
-                cand_encs = self.fixed_candidate_encs
-            elif self.eval_candidates == 'vocab':
-                cand_encs = self.vocab_candidate_encs
+        else:
+            cands, cand_vecs, label_inds = self._build_candidates(
+                batch, source=self.eval_candidates, mode='eval'
+            )
+            cand_encs=None
+
+            if self.encode_candidate_vecs and self.eval_candidates in ['fixed', 'vocab']:
+                # if we cached candidate encodings for a fixed list of candidates,
+                # pass those into the score_candidates function
+                if self.fixed_candidate_encs is None:
+                    self.fixed_candidate_encs = self._make_candidate_encs(
+                        cand_vecs
+                    ).detach()
+                if self.eval_candidates == 'fixed':
+                    cand_encs = self.fixed_candidate_encs
+                elif self.eval_candidates == 'vocab':
+                    cand_encs = self.vocab_candidate_encs
 
         scores = self.score_candidates(batch, cand_vecs, cand_encs=cand_encs)
+
         if self.rank_top_k > 0:
             _, ranks = scores.topk(
                 min(self.rank_top_k, scores.size(1)), 1, largest=True
@@ -474,7 +545,6 @@ class TorchRankerAgent(TorchAgent):
                 cand_list[rank] for rank in ordering if rank < len(cand_list)
             )
             cand_preds.append(list(islice(cand_preds_generator, max_preds)))
-
         if (
             self.opt.get('repeat_blocking_heuristic', True)
             and self.eval_candidates == 'fixed'
@@ -482,13 +552,61 @@ class TorchRankerAgent(TorchAgent):
             cand_preds = self.block_repeats(cand_preds)
 
         if self.opt.get('inference', 'max') == 'max':
-            preds = [cand_preds[i][0] for i in range(batchsize)]
-        else:
-            # Top-k inference.
-            preds = []
+            preds=[]
             for i in range(batchsize):
-                preds.append(random.choice(cand_preds[i][0 : self.opt['topk']]))
-
+                if scores[i][ranks[i][0]]>15:
+                    preds.append(cand_preds[i][0])
+                else:
+                    preds.append("Sorry, I don't know how to answer that.")
+        else:
+            # Top-p inference.
+            #precision=[]
+            #recall=[]
+            preds = []
+            print(cand_preds[i])
+            for i in range(batchsize):
+                s = scores[i][ranks[i]]
+                if s>15:
+                    preds.append(cand_preds[i][0])
+                else:
+                    preds.append("Sorry, I don't know how to answer that.")
+                if os.path.isfile(self.opt.get('ground_truth_path','None')):
+                    num_of_cands=0
+                    false_positives=0
+                    true_positives=0
+                    for j in range(len(ranks[i])):
+                        if s[j]<self.opt['topp']:
+                            break
+                        else:
+                            num_of_cands+=1
+                        if cand_preds[i][j] in self.groundtruth[index]:
+                            true_positives+=1
+                        else:
+                            false_positives+=1
+                    #precision.append(1-false_positives/num_of_cands)
+                    #recall.append((num_of_cands-false_positives)/len(self.groundtruth[index]))
+                    print(scores)
+                    print(ranks[i])
+                    try:
+                        pre=true_positives/num_of_cands
+                    except:
+                        #num_of_cands == 0
+                        pre = 1
+                    try:
+                        rec=true_positives/len(self.groundtruth[index])
+                    except:
+                        #false_negatives == 0:
+                        if true_positives==0:
+                            rec=0
+                        else:
+                            rec = 1
+                    if (pre+rec)<0.001:
+                        f1=0
+                    else:
+                        f1=2*pre*rec/(pre+rec)
+                    print('precision:',pre)
+                    print('recall:',rec)
+                    print('f1:',f1)
         return Output(preds, cand_preds)
 
     def block_repeats(self, cand_preds):
