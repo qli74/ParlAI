@@ -4,15 +4,13 @@ import json
 import numpy as np
 #data/models/pretrained_transformers/poly_model_huge_reddit/model
 #model/model/poly/covid7
-with open('inputQ.json') as f:
-  Q = json.load(f)
 for thre in np.arange(1, 30, 1):
-    p = subprocess.Popen(['python3 -m parlai.scripts.interactive -m transformer/polyencoder -mf ../model/model/poly2/covid8 --single-turn True --inference topp --topp '+str(thre)+' --ground-truth-path /Users/lexine/Documents/DLforDialog/covid19-train-dev-test/testQA.tsv'], shell=True,
+    p = subprocess.Popen(['python3 -m parlai.scripts.interactive -m transformer/polyencoder -mf ../model/covid --single-turn True --inference topp --topp '+str(thre)+' --ground-truth-path ../ROCdata/testQA.tsv'], shell=True,
                          stdout=subprocess.PIPE,
                          stdin=subprocess.PIPE,
                         env={})
 
-    for i in range(100):
+    for i in range(200):
         line = p.stdout.readline()
         line = line.strip().decode()
         print(line)
@@ -26,12 +24,14 @@ for thre in np.arange(1, 30, 1):
         q=str(q)
         print(q)
         p.stdin.write(q.encode('utf-8'))
-        p.stdin.write(bytes("\n"))
+        #p.stdin.write("\n")
+        p.stdin.write(b"\n")
         p.stdin.flush()
         line=''
         while 'precision:' not in line: # Exclude other messages
             line = p.stdout.readline()
-        print(line)
+            line = line.strip().decode()
+            print(line)
         line = line.split('precision:')
         pre=float(line[-1])
 

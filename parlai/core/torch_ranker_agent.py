@@ -221,6 +221,7 @@ class TorchRankerAgent(TorchAgent):
                 self.model, device_ids=[self.opt['gpu']], broadcast_buffers=False
             )
 
+        print('opening ground_truth_path')
         if os.path.isfile(opt.get('ground_truth_path','None')):
             groundtruth = []
             allcands = []
@@ -231,6 +232,7 @@ class TorchRankerAgent(TorchAgent):
             scores = []
             gt=[]
             with open(opt['ground_truth_path']) as tsvfile:
+                print('successfully opened ground_truth_path',opt['ground_truth_path'])
                 tsvreader = csv.reader(tsvfile, delimiter="|")
                 for line in tsvreader: #[q,a,score]
                     c += 1
@@ -464,6 +466,7 @@ class TorchRankerAgent(TorchAgent):
         """
         Evaluate a single batch of examples.
         """
+        print('Starting eval')
         if batch.text_vec is None and batch.image is None:
             return
         batchsize = (
@@ -517,6 +520,16 @@ class TorchRankerAgent(TorchAgent):
         else:
             _, ranks = scores.sort(1, descending=True)
 
+        # add score to answer
+        '''
+        newcands = []
+        # print(len(cands),len(cands[0]))
+        # print(scores.size())
+        if self.opt['interactive_mode']:
+            for i in range(len(cands)):
+                newcands.append(str(scores[0][i].numpy()) + '|' + cands[i])
+        '''
+
         # Update metrics
         if label_inds is not None:
             loss = self.criterion(scores, label_inds)
@@ -551,6 +564,7 @@ class TorchRankerAgent(TorchAgent):
         ):
             cand_preds = self.block_repeats(cand_preds)
 
+        #print('inference',self.opt.get('inference', 'max'))
         if self.opt.get('inference', 'max') == 'max':
             preds=[]
             for i in range(batchsize):
@@ -558,19 +572,25 @@ class TorchRankerAgent(TorchAgent):
                     preds.append(cand_preds[i][0])
                 else:
                     preds.append("Sorry, I don't know how to answer that.")
+        elif self.opt.get('inference', 'max') == 'topk':
+            # Top-k inference.
+            preds = []
+            for i in range(batchsize):
+                preds.append(random.choice(cand_preds[i][0 : self.opt['topk']]))
         else:
             # Top-p inference.
             #precision=[]
             #recall=[]
             preds = []
-            print(cand_preds[i])
             for i in range(batchsize):
-                s = scores[i][ranks[i]]
-                if s>15:
+                print('original_scores:', scores[i])
+                s = scores[i][ranks[i]] #sorted scores[i]
+                if s[0]>15:
                     preds.append(cand_preds[i][0])
                 else:
                     preds.append("Sorry, I don't know how to answer that.")
                 if os.path.isfile(self.opt.get('ground_truth_path','None')):
+                    # Calculating precision and recall
                     num_of_cands=0
                     false_positives=0
                     true_positives=0
@@ -585,8 +605,6 @@ class TorchRankerAgent(TorchAgent):
                             false_positives+=1
                     #precision.append(1-false_positives/num_of_cands)
                     #recall.append((num_of_cands-false_positives)/len(self.groundtruth[index]))
-                    print(scores)
-                    print(ranks[i])
                     try:
                         pre=true_positives/num_of_cands
                     except:
@@ -607,6 +625,7 @@ class TorchRankerAgent(TorchAgent):
                     print('precision:',pre)
                     print('recall:',rec)
                     print('f1:',f1)
+
         return Output(preds, cand_preds)
 
     def block_repeats(self, cand_preds):
